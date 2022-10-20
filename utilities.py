@@ -37,6 +37,7 @@ class PedestrianWindComfort():
         self.server         = "prod"
         
         #Client Variables
+        self.api_client  = None
         self.project_api = None
         self.storage_api = None
         self.geometry_import_api = None
@@ -46,9 +47,14 @@ class PedestrianWindComfort():
         self.table_import_api =None
         self.reports_api = None
         
-        #Project related variables 
+        #Project variables 
         self.project_name = ""
         self.project_id   = ""
+        
+        #Geometry variables
+        self.geometry_anme = ""
+        self.geometry_id   = ""
+        self.geometry_path = ""
         
     """Functions that allows setting up the API connection"""
     
@@ -131,21 +137,21 @@ class PedestrianWindComfort():
         configuration.api_key = {self.api_key_header: self.api_key}
         
         #Setup the API client connection 
-        api_client = sim_sdk.ApiClient(configuration)
+        self.api_client = sim_sdk.ApiClient(configuration)
         retry_policy = urllib3.Retry(connect=5, read=5, redirect=0, status=5, backoff_factor=0.2)
-        api_client.rest_client.pool_manager.connection_pool_kw["retries"] = retry_policy
+        self.api_client.rest_client.pool_manager.connection_pool_kw["retries"] = retry_policy
        
         #Define the required API clients for the simulation 
-        self.project_api = sim_sdk.ProjectsApi(api_client)
-        self.storage_api = sim_sdk.StorageApi(api_client)
-        self.geometry_import_api = sim_sdk.GeometryImportsApi(api_client)
-        self.geometry_api = sim_sdk.GeometriesApi(api_client)
-        self.simulation_api = sim_sdk.SimulationsApi(api_client)
-        self.simulation_run_api = sim_sdk.SimulationRunsApi(api_client)
-        self.table_import_api = sim_sdk.TableImportsApi(api_client)
-        self.reports_api = sim_sdk.ReportsApi(api_client) 
+        self.project_api = sim_sdk.ProjectsApi(self.api_client)
+        self.storage_api = sim_sdk.StorageApi(self.api_client)
+        self.geometry_import_api = sim_sdk.GeometryImportsApi(self.api_client)
+        self.geometry_api = sim_sdk.GeometriesApi(self.api_client)
+        self.simulation_api = sim_sdk.SimulationsApi(self.api_client)
+        self.simulation_run_api = sim_sdk.SimulationRunsApi(self.api_client)
+        self.table_import_api = sim_sdk.TableImportsApi(self.api_client)
+        self.reports_api = sim_sdk.ReportsApi(self.api_client) 
 
-    def create_project(self, name, description):
+    def create_project(self, name, description, measurement_system = "SI"):
         '''
         Take a name and description and create a new workbench project
 
@@ -180,7 +186,101 @@ class PedestrianWindComfort():
             print("Cannot create project with the same name, using existing project")
         except:
             #If not then create a new project
-            project = sim_sdk.Project(name=name, description=description)
+            project = sim_sdk.Project(name=name, description=description,
+                                      measurement_system = measurement_system)
             project = self.project_api.create_project(project)
             self.project_id = project.project_id
             self.project_name = name        
+            
+        
+    def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
+        '''
+        Upload a geometry to the SimScale platform to a preassigned project.
+        
+        Parameters
+        ----------
+        name : str
+            The name given to the geometry.
+            
+        path : pathlib.Path, optional
+            The path to a geometry to upload. 
+            
+        units : str, optional
+            the unit in which to upload the geometry to SimScale.
+            
+            The default is "m".
+            
+        _format : str, optional
+            The file format. 
+            
+            The default is "STL".
+            
+        facet_split : bool, optional
+            Decide on weather to split facet geometry (such as .stl file 
+            types). We prefer not to do this for API use.
+            
+            The default is False.
+
+        Raises
+        ------
+        TimeoutError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        '''
+        self.geometry_name = name
+        
+        #Check if the geometry already exists
+        try:
+            project_id = self.project_id
+            geometry_api = self.geometry_api
+        
+            geometries = geometry_api.get_geometries(project_id).to_dict()['embedded']
+            found = None
+            for geometry in geometries:
+                if geometry['name'] == name:
+                    found = geometry
+                    print('Geometry found: \n' + str(found['name']))
+                    break
+                        
+            if found is None:
+                raise Exception('could not find geometry with id: ' + name)
+                
+            self.geometry_name = found
+            self.geometry_id = found["geometry_id"]
+            print("Cannot upload geometry with the same name, using existing geometry")
+
+        except:
+            
+            self.geometry_path = path
+
+            storage = self.storage_api.create_storage()
+            with open(self.geometry_path, 'rb') as file:
+                self.api_client.rest_client.PUT(url=storage.url, headers={'Content-Type': 'application/octet-stream'},
+                                                body=file.read())
+            self.storage_id = storage.storage_id
+
+            geometry_import = sim_sdk.GeometryImportRequest(
+                name=name,
+                location=sim_sdk.GeometryImportRequestLocation(self.storage_id),
+                format=_format,
+                input_unit=units,
+                options=sim_sdk.GeometryImportRequestOptions(facet_split=facet_split, sewing=False, improve=True,
+                                                         optimize_for_lbm_solver=True),
+            )
+
+            geometry_import = self.geometry_import_api.import_geometry(self.project_id, geometry_import)
+            geometry_import_id = geometry_import.geometry_import_id
+
+            geometry_import_start = time.time()
+            while geometry_import.status not in ('FINISHED', 'CANCELED', 'FAILED'):
+                # adjust timeout for larger geometries
+                if time.time() > geometry_import_start + 900:
+                    raise TimeoutError()
+                time.sleep(10)
+                geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
+                print(f'Geometry import status: {geometry_import.status}')
+            self.geometry_id = geometry_import.geometry_id
