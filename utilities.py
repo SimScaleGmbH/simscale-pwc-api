@@ -7,6 +7,7 @@ Created on Thu Oct 20 10:09:12 2022
 import os
 import time
 import zipfile
+import shutil
 
 import isodate
 import urllib3
@@ -191,8 +192,26 @@ class PedestrianWindComfort():
             project = self.project_api.create_project(project)
             self.project_id = project.project_id
             self.project_name = name        
-            
+             
+    def zip_cad_for_upload(self, file_name, base_path): 
         
+        geometry_path = []
+        
+        #Loop over the CAD files needed for upload
+        for cad in file_name:
+            
+            #Get the path of each CAD file
+            path = base_path / cad
+            
+            # The output_filename variable saves the zip file at a desired path; 
+            # in this case it is same directory
+            output_filename = path
+             
+            #Retruns a zip file(s) path of the associated CAD, 
+            geometry_path.append(shutil.make_archive(output_filename, 'zip', path)) 
+
+        return geometry_path
+    
     def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
         '''
         Upload a geometry to the SimScale platform to a preassigned project.
