@@ -26,9 +26,9 @@ geometry_path = pwc.zip_cad_for_upload(name_of_files_to_upload,base_path)
 for i, cad in enumerate(name_of_files_to_upload): 
     pwc.upload_geometry(cad, geometry_path[i])
 
-
 """Simulation Setup"""
-#Uncomment set_custom_wt_size function only if you plan to define a custom WT
+"""STEP 1: Define Region Of Interest"""
+#Uncomment the function below only if you plan to define a custom WT
 # pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
 #                        inflow_ext = 200, outflow_ext = 500)
 
@@ -36,5 +36,18 @@ pwc.set_region_of_interest(radius = 300, center = [50,0], ground_height = 0,
                            north_angle = 0, 
                            wt_size = 'moderate') #moderate, large, custom 
 
+"""STEP 2: Define The Wind Conditions"""
+# #Define information that characterizes the incoming wind
+pwc.set_geographical_location(latitude = 42.3600825, longitude = -71.0588801)
+pwc.set_num_wind_directions(4)
+pwc.set_wind_engineering_standard("EU")
+pwc.set_wind_exposure_category(["EC2", "EC2", "EC2", "EC2"])
+pwc.set_surface_roughness(surface_roughness= True)
+pwc.set_wind_data_source("METEOBLUE")
+pwc.set_wind_rose()
+# pwc.set_wind_conditions()
+
+
 pwc.set_simulation_spec()
+
 

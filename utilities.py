@@ -29,7 +29,7 @@ class PedestrianWindComfort():
     
     def __init__(self): 
         
-        #API variables
+        #API Variables
         self.api_key        = ""
         self.api_url        = ""
         self.api_key_header = "X-API-KEY"
@@ -48,11 +48,11 @@ class PedestrianWindComfort():
         self.table_import_api =None
         self.reports_api = None
         
-        #Project variables 
+        #Project Variables 
         self.project_name = ""
         self.project_id   = ""
         
-        #Geometry variables
+        #Geometry Variables
         self.geometry_name = ""
         self.geometry_id   = ""
         self.geometry_path = ""
@@ -70,6 +70,21 @@ class PedestrianWindComfort():
         self.side_extension = None
         self.inflow_extension = None 
         self.outflow_extension = None 
+        
+        #Wind Condition Variables
+        self.wind_conditions = None 
+        self.latitude = None 
+        self.longitude = None 
+        self.geo_location_obj = None 
+        self.wind_rose = None 
+        self.wind_data_source = ''
+        self.wind_engineering_standard = '' #["EU", "AS_NZS", "NEN8100", "LONDON"]
+        self.number_wind_directions = None 
+        self.exposure_category = []  #["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"] 
+        self.wind_velocity_unit = "m/s"
+        self.add_surface_roughness = True 
+        
+        
         
     """Functions that allows setting up the API connection"""
     
@@ -372,38 +387,96 @@ class PedestrianWindComfort():
         self.inflow_extension  = sim_sdk.DimensionalLength(inflow_ext, "m")
         self.outflow_extension = sim_sdk.DimensionalLength(outflow_ext, "m")
         
-      
+    
+    def set_num_wind_directions(self, num_wind_dir): 
+        
+        self.number_wind_directions = num_wind_dir
+            
+    def set_wind_engineering_standard(self, wind_eng_std): 
+        
+        self.wind_engineering_standard = wind_eng_std
+    
+    def set_wind_exposure_category(self, exposure_categories):
+        
+        self.exposure_category = exposure_categories
+        
+    def set_surface_roughness(self, surface_roughness): 
+        
+        self.add_surface_roughness = surface_roughness
+        
+    def set_wind_data_source(self, data_source): 
+        
+        self.wind_data_source = data_source 
+        
+    def set_geographical_location(self, latitude, longitude):
+        
+        self.latitude  = sim_sdk.DimensionalAngle(latitude, "°")
+        self.longitude = sim_sdk.DimensionalAngle(longitude, "°")
+        
+        self.geo_location_obj = sim_sdk.GeographicalLocation(
+            latitude= self.latitude, 
+            longitude=self.longitude)
+
+    def set_wind_rose (self):
+    
+        if self.wind_data_source == "METEOBLUE" : 
+            
+            print("Num of Wind : {}".format(self.number_wind_directions))
+            print("Exposure: {}".format(self.exposure_category))
+            print("standard: {}".format(self.wind_engineering_standard))
+            print("roughness: {}".format(self.add_surface_roughness))
+            print("Source: {}".format(self.wind_data_source))
+
+            self.wind_rose = sim_sdk.WindRose(
+                num_directions= self.number_wind_directions, 
+                velocity_buckets=[
+                    sim_sdk.WindRoseVelocityBucket(_from=None, to=1.234, fractions=[0.1, 0.1, 0.1, 0.1]),
+                    sim_sdk.WindRoseVelocityBucket(_from=1.234, to=2.345, fractions=[0.0, 0.1, 0.1, 0.1]),
+                    sim_sdk.WindRoseVelocityBucket(_from=2.345, to=3.456, fractions=[0.0, 0.0, 0.1, 0.1]),
+                    sim_sdk.WindRoseVelocityBucket(_from=3.456, to=None, fractions=[0.0, 0.0, 0.0, 0.1]),
+                ],
+                velocity_unit= self.wind_velocity_unit,
+                exposure_categories= self.exposure_category,
+                wind_engineering_standard= self.wind_engineering_standard,
+                wind_data_source= self.wind_data_source ,
+                add_surface_roughness= self.add_surface_roughness ,
+            )
+        
+        else: 
+            
+                   # wind_rose=WindRose(
+                   #     num_directions=4,
+                   #     velocity_buckets=[
+                   #         WindRoseVelocityBucket(_from=None, to=1.234, fractions=[0.1, 0.1, 0.1, 0.1]),
+                   #         WindRoseVelocityBucket(_from=1.234, to=2.345, fractions=[0.0, 0.1, 0.1, 0.1]),
+                   #         WindRoseVelocityBucket(_from=2.345, to=3.456, fractions=[0.0, 0.0, 0.1, 0.1]),
+                   #         WindRoseVelocityBucket(_from=3.456, to=None, fractions=[0.0, 0.0, 0.0, 0.1]),
+                   #     ],
+                   #     velocity_unit="m/s",
+                   #     exposure_categories=["EC2", "EC2", "EC2", "EC2"],
+                   #     wind_engineering_standard="EU",
+                   #     wind_data_source="USER_UPLOAD",
+                   #     add_surface_roughness=False,
+                   # ),
+            
+            pass
+            
+    def set_wind_conditions(self): 
+        
+        self.wind_conditions = sim_sdk.WindConditions(
+            geographical_location= self.geo_location_obj,
+            wind_rose= self.wind_rose 
+        )
+        
     def set_simulation_spec(self):
         # Define simulation spec
         model = WindComfort(
-            # region_of_interest=RegionOfInterest(
-            #     disc_radius=DimensionalLength(150, "m"),
-            #     center_point=DimensionalVector2dLength(DecimalVector2d(0, 0), "m"),
-            #     ground_height=DimensionalLength(5, "m"),
-            #     north_angle=DimensionalAngle(0, "°"),
-            #     advanced_settings=AdvancedROISettings(WindTunnelSizeModerate()),
-            # )
             region_of_interest= self.region_of_interest
             ,
-            wind_conditions=WindConditions(
-                geographical_location=GeographicalLocation(
-                    latitude=DimensionalAngle(48.135125, "°"), longitude=DimensionalAngle(11.581981, "°")
-                ),
-                wind_rose=WindRose(
-                    num_directions=4,
-                    velocity_buckets=[
-                        WindRoseVelocityBucket(_from=None, to=1.234, fractions=[0.1, 0.1, 0.1, 0.1]),
-                        WindRoseVelocityBucket(_from=1.234, to=2.345, fractions=[0.0, 0.1, 0.1, 0.1]),
-                        WindRoseVelocityBucket(_from=2.345, to=3.456, fractions=[0.0, 0.0, 0.1, 0.1]),
-                        WindRoseVelocityBucket(_from=3.456, to=None, fractions=[0.0, 0.0, 0.0, 0.1]),
-                    ],
-                    velocity_unit="m/s",
-                    exposure_categories=["EC2", "EC2", "EC2", "EC2"],
-                    wind_engineering_standard="EU",
-                    wind_data_source="USER_UPLOAD",
-                    add_surface_roughness=False,
-                ),
-            ),
+            wind_conditions=  sim_sdk.WindConditions(
+                     geographical_location= self.geo_location_obj,
+                     wind_rose = self.wind_rose)
+            ,
             pedestrian_comfort_map=[
                 PedestrianComfortSurface(
                     name="Pedestrian level 1", height_above_ground=DimensionalLength(1.5, "m"), ground=GroundAbsolute()
@@ -426,7 +499,7 @@ class PedestrianWindComfort():
             mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
         )
 
-        simulation_spec = SimulationSpec(name="PWC_CustomWT", geometry_id= self.geometry_id, model=model)
+        simulation_spec = SimulationSpec(name="PWC_WindRose", geometry_id= self.geometry_id, model=model)
 
         # Create simulation
         simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id
