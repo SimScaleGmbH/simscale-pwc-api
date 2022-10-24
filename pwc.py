@@ -8,6 +8,7 @@ Created on Thu Oct 20 10:09:40 2022
 import utilities as util 
 import pathlib 
 
+
 pwc = util.PedestrianWindComfort()
 
 """Setup the API connection"""
@@ -26,5 +27,14 @@ for i, cad in enumerate(name_of_files_to_upload):
     pwc.upload_geometry(cad, geometry_path[i])
 
 
+"""Simulation Setup"""
+#Uncomment set_custom_wt_size function only if you plan to define a custom WT
+# pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
+#                        inflow_ext = 200, outflow_ext = 500)
 
-    
+pwc.set_region_of_interest(radius = 300, center = [50,0], ground_height = 0, 
+                           north_angle = 0, 
+                           wt_size = 'moderate') #moderate, large, custom 
+
+pwc.set_simulation_spec()
+

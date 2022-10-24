@@ -11,17 +11,17 @@ import shutil
 
 import isodate
 import urllib3
-# from simscale_sdk import Configuration, ApiClient, ProjectsApi, StorageApi, GeometryImportsApi, GeometriesApi, \
-#     SimulationsApi, SimulationRunsApi, ReportsApi, Project, GeometryImportRequest, ApiException, WindData
-# from simscale_sdk import GeometryImportRequestLocation, GeometryImportRequestOptions
-# from simscale_sdk import SimulationSpec, SimulationRun
-# from simscale_sdk import UserInputCameraSettings, ProjectionType, Vector3D, ModelSettings, Part, \
-#     ScreenshotOutputSettings, Color, ResolutionInfo, ScreenshotReportProperties, ReportRequest
-# from simscale_sdk import WindComfort, RegionOfInterest, DimensionalLength, DimensionalVector2dLength, DecimalVector2d, \
-#     DimensionalAngle, AdvancedROISettings, WindTunnelSizeModerate, WindConditions, GeographicalLocation, WindRose, \
-#     WindRoseVelocityBucket, PedestrianComfortSurface, GroundAbsolute, WindComfortSimulationControl, AdvancedModelling, \
-#     TransientResultControl, CoarseResolution, StatisticalAveragingResultControlV2, PacefishFinenessVeryCoarse, \
-#     WindComfortMesh, DimensionalTime, FluidResultControls
+from simscale_sdk import Configuration, ApiClient, ProjectsApi, StorageApi, GeometryImportsApi, GeometriesApi, \
+    SimulationsApi, SimulationRunsApi, ReportsApi, Project, GeometryImportRequest, ApiException, WindData
+from simscale_sdk import GeometryImportRequestLocation, GeometryImportRequestOptions
+from simscale_sdk import SimulationSpec, SimulationRun
+from simscale_sdk import UserInputCameraSettings, ProjectionType, Vector3D, ModelSettings, Part, \
+    ScreenshotOutputSettings, Color, ResolutionInfo, ScreenshotReportProperties, ReportRequest
+from simscale_sdk import WindComfort, RegionOfInterest, DimensionalLength, DimensionalVector2dLength, DecimalVector2d, \
+    DimensionalAngle, AdvancedROISettings, WindTunnelSizeModerate, WindConditions, GeographicalLocation, WindRose, \
+    WindRoseVelocityBucket, PedestrianComfortSurface, GroundAbsolute, WindComfortSimulationControl, AdvancedModelling, \
+    TransientResultControl, CoarseResolution, StatisticalAveragingResultControlV2, PacefishFinenessVeryCoarse, \
+    WindComfortMesh, DimensionalTime, FluidResultControls
 
 import simscale_sdk as sim_sdk
 
@@ -53,9 +53,23 @@ class PedestrianWindComfort():
         self.project_id   = ""
         
         #Geometry variables
-        self.geometry_anme = ""
+        self.geometry_name = ""
         self.geometry_id   = ""
         self.geometry_path = ""
+        
+        #Region Of Interest Variables
+        self.region_of_interest = None
+        self.roi_radius = 300
+        self.center = [0,0]
+        self.ground_height = 0 
+        self.north_angle = 0 
+        self.wind_tunnel_size = "" # moderate, large, custom
+        self.wind_tunnel_size_obj = None
+        self.wind_tunnel_type = None # only used when defining custom WT
+        self.height_extension = None
+        self.side_extension = None
+        self.inflow_extension = None 
+        self.outflow_extension = None 
         
     """Functions that allows setting up the API connection"""
     
@@ -303,3 +317,117 @@ class PedestrianWindComfort():
                 geometry_import = self.geometry_import_api.get_geometry_import(self.project_id, geometry_import_id)
                 print(f'Geometry import status: {geometry_import.status}')
             self.geometry_id = geometry_import.geometry_id
+        
+            
+    def set_region_of_interest(self, radius, center ,ground_height, north_angle, wt_size = 'moderate'):
+        
+        self.roi_radius , self.center   = radius , center
+        self.ground_height , self.north_angle = ground_height , north_angle
+        self.set_wind_tunnel_size(wt_size)
+        
+        
+        self.region_of_interest = sim_sdk.RegionOfInterest(
+                disc_radius=sim_sdk.DimensionalLength(self.roi_radius, "m"),
+                center_point=sim_sdk.DimensionalVector2dLength(sim_sdk.DecimalVector2d(self.center[0],self.center[1]), "m"),
+                ground_height=sim_sdk.DimensionalLength(self.ground_height, "m"),
+                north_angle=sim_sdk.DimensionalAngle(self.north_angle, "°"),
+                advanced_settings=sim_sdk.AdvancedROISettings(self.wind_tunnel_size_obj),
+                )
+      
+    def set_wind_tunnel_size(self, wt_size = "moderate"):
+        
+        """ If a custom wind tunnel size is to be chosen, make sure to run 
+        the function set_custom_wt_size to define the size of the custom 
+        wind tunnel"""
+        
+        self.wind_tunnel_size =  wt_size
+        
+        if self.wind_tunnel_size  == "moderate" : 
+            
+            self.wind_tunnel_size_obj = sim_sdk.WindTunnelSizeModerate()
+        
+        elif self.wind_tunnel_size  == "large" : 
+            
+            self.wind_tunnel_size_obj = sim_sdk.WindTunnelSizeLarge()
+      
+        else : 
+            
+            self.wind_tunnel_size_obj  = sim_sdk.WindTunnelSizeCustom(
+                self.wind_tunnel_type,
+                self.height_extension, 
+                self.side_extension, 
+                self.inflow_extension, 
+                self.outflow_extension,
+                )
+            
+            pass
+    
+        return self.wind_tunnel_size_obj
+        
+    def set_custom_wt_size(self, height_ext, side_ext, inflow_ext, outflow_ext):
+        
+        self.wind_tunnel_type = 'WIND_TUNNEL_SIZE_CUSTOM'
+        self.height_extension  = sim_sdk.DimensionalLength(height_ext, "m")
+        self.side_extension    = sim_sdk.DimensionalLength(side_ext, "m")
+        self.inflow_extension  = sim_sdk.DimensionalLength(inflow_ext, "m")
+        self.outflow_extension = sim_sdk.DimensionalLength(outflow_ext, "m")
+        
+      
+    def set_simulation_spec(self):
+        # Define simulation spec
+        model = WindComfort(
+            # region_of_interest=RegionOfInterest(
+            #     disc_radius=DimensionalLength(150, "m"),
+            #     center_point=DimensionalVector2dLength(DecimalVector2d(0, 0), "m"),
+            #     ground_height=DimensionalLength(5, "m"),
+            #     north_angle=DimensionalAngle(0, "°"),
+            #     advanced_settings=AdvancedROISettings(WindTunnelSizeModerate()),
+            # )
+            region_of_interest= self.region_of_interest
+            ,
+            wind_conditions=WindConditions(
+                geographical_location=GeographicalLocation(
+                    latitude=DimensionalAngle(48.135125, "°"), longitude=DimensionalAngle(11.581981, "°")
+                ),
+                wind_rose=WindRose(
+                    num_directions=4,
+                    velocity_buckets=[
+                        WindRoseVelocityBucket(_from=None, to=1.234, fractions=[0.1, 0.1, 0.1, 0.1]),
+                        WindRoseVelocityBucket(_from=1.234, to=2.345, fractions=[0.0, 0.1, 0.1, 0.1]),
+                        WindRoseVelocityBucket(_from=2.345, to=3.456, fractions=[0.0, 0.0, 0.1, 0.1]),
+                        WindRoseVelocityBucket(_from=3.456, to=None, fractions=[0.0, 0.0, 0.0, 0.1]),
+                    ],
+                    velocity_unit="m/s",
+                    exposure_categories=["EC2", "EC2", "EC2", "EC2"],
+                    wind_engineering_standard="EU",
+                    wind_data_source="USER_UPLOAD",
+                    add_surface_roughness=False,
+                ),
+            ),
+            pedestrian_comfort_map=[
+                PedestrianComfortSurface(
+                    name="Pedestrian level 1", height_above_ground=DimensionalLength(1.5, "m"), ground=GroundAbsolute()
+                )
+            ],
+            simulation_control=WindComfortSimulationControl(
+                max_direction_run_time=DimensionalTime(10000, "s"), number_of_fluid_passes=0.2
+            ),
+            advanced_modelling=AdvancedModelling(),
+            additional_result_export=FluidResultControls(
+                transient_result_control=TransientResultControl(
+                    write_control=CoarseResolution(),
+                    fraction_from_end=0.1,
+                ),
+                statistical_averaging_result_control=StatisticalAveragingResultControlV2(
+                    sampling_interval=CoarseResolution(),
+                    fraction_from_end=0.1,
+                ),
+            ),
+            mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
+        )
+
+        simulation_spec = SimulationSpec(name="PWC_CustomWT", geometry_id= self.geometry_id, model=model)
+
+        # Create simulation
+        simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id
+        print(f"simulationId: {simulation_id}")
