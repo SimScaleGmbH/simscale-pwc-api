@@ -8,7 +8,6 @@ Created on Thu Oct 20 10:09:40 2022
 import utilities as util 
 import pathlib 
 
-
 pwc = util.PedestrianWindComfort()
 
 """Setup the API connection"""
@@ -37,15 +36,14 @@ pwc.set_region_of_interest(radius = 300, center = [50,0], ground_height = 0,
                            wt_size = 'moderate') #moderate, large, custom 
 
 """STEP 2: Define The Wind Conditions"""
-# #Define information that characterizes the incoming wind
+#Define information that characterizes the incoming wind
 pwc.set_geographical_location(latitude = 42.3600825, longitude = -71.0588801)
 pwc.set_num_wind_directions(4)
 pwc.set_wind_engineering_standard("EU")
-pwc.set_wind_exposure_category(["EC2", "EC2", "EC2", "EC2"])
+pwc.set_wind_exposure_category(["EC2"]* 4)
 pwc.set_surface_roughness(surface_roughness= True)
 pwc.set_wind_data_source("METEOBLUE")
 pwc.set_wind_rose()
-# pwc.set_wind_conditions()
 
 
 pwc.set_simulation_spec()

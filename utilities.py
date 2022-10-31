@@ -47,6 +47,7 @@ class PedestrianWindComfort():
         self.simulation_run_api = None
         self.table_import_api =None
         self.reports_api = None
+        self.wind_api = None 
         
         #Project Variables 
         self.project_name = ""
@@ -75,9 +76,11 @@ class PedestrianWindComfort():
         self.wind_conditions = None 
         self.latitude = None 
         self.longitude = None 
+        self.latitude_meteoblue = None
+        self.longitude_meteoblue = None
         self.geo_location_obj = None 
         self.wind_rose = None 
-        self.wind_data_source = ''
+        self.wind_data_source = '' #METEOBLUE, USER_UPLOAD
         self.wind_engineering_standard = '' #["EU", "AS_NZS", "NEN8100", "LONDON"]
         self.number_wind_directions = None 
         self.exposure_category = []  #["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"] 
@@ -180,6 +183,8 @@ class PedestrianWindComfort():
         self.simulation_run_api = sim_sdk.SimulationRunsApi(self.api_client)
         self.table_import_api = sim_sdk.TableImportsApi(self.api_client)
         self.reports_api = sim_sdk.ReportsApi(self.api_client) 
+        self.wind_api = sim_sdk.WindApi(self.api_client)
+
 
     def create_project(self, name, description, measurement_system = "SI"):
         '''
@@ -408,25 +413,49 @@ class PedestrianWindComfort():
         
         self.wind_data_source = data_source 
         
-    def set_geographical_location(self, latitude, longitude):
-        
-        self.latitude  = sim_sdk.DimensionalAngle(latitude, "°")
-        self.longitude = sim_sdk.DimensionalAngle(longitude, "°")
-        
-        self.geo_location_obj = sim_sdk.GeographicalLocation(
-            latitude= self.latitude, 
-            longitude=self.longitude)
-
+    def set_geographical_location(self, latitude, longitude): 
+    
+            #For Meteoblue
+            self.latitude_meteoblue  = str(latitude)
+            self.longitude_meteoblue = str(longitude)
+            # Required for simulation setup and for manual wind data input
+            self.latitude  = sim_sdk.DimensionalAngle(latitude, "°")
+            self.longitude = sim_sdk.DimensionalAngle(longitude, "°")
+            
+            self.geo_location_obj = sim_sdk.GeographicalLocation(
+                latitude= self.latitude, 
+                longitude=self.longitude)       
+    
+    def set_velocity_buckets(self): 
+        #create a function that allows the user to define up to 16 WD using 
+        #velocity buckets
+            
     def set_wind_rose (self):
     
         if self.wind_data_source == "METEOBLUE" : 
             
-            print("Num of Wind : {}".format(self.number_wind_directions))
-            print("Exposure: {}".format(self.exposure_category))
-            print("standard: {}".format(self.wind_engineering_standard))
-            print("roughness: {}".format(self.add_surface_roughness))
-            print("Source: {}".format(self.wind_data_source))
-
+            print("Importing wind data from Meteoblue..")
+            try:
+                wind_rose_response = self.wind_api.get_wind_data (self.latitude_meteoblue , 
+                                                                  self.longitude_meteoblue)
+                self.wind_rose = wind_rose_response.wind_rose
+                self.wind_rose.num_directions = self.number_wind_directions
+                self.wind_rose.exposure_categories = self.exposure_category # ["EC4"] * wind_rose.num_directions
+                self.wind_rose.wind_engineering_standard = self.wind_engineering_standard
+                self.wind_rose.add_surface_roughness = self.add_surface_roughness
+                
+            except ApiException as ae:
+                if ae.status == 429:
+                    print(
+                        f"Exceeded max amount requests, please retry in {ae.headers.get('X-Rate-Limit-Retry-After-Minutes')} minutes")
+                    raise ApiException(ae)
+                else:
+                    raise ae
+        
+        else: 
+            
+            print("Importing wind data from user input..")
+            
             self.wind_rose = sim_sdk.WindRose(
                 num_directions= self.number_wind_directions, 
                 velocity_buckets=[
@@ -441,26 +470,7 @@ class PedestrianWindComfort():
                 wind_data_source= self.wind_data_source ,
                 add_surface_roughness= self.add_surface_roughness ,
             )
-        
-        else: 
-            
-                   # wind_rose=WindRose(
-                   #     num_directions=4,
-                   #     velocity_buckets=[
-                   #         WindRoseVelocityBucket(_from=None, to=1.234, fractions=[0.1, 0.1, 0.1, 0.1]),
-                   #         WindRoseVelocityBucket(_from=1.234, to=2.345, fractions=[0.0, 0.1, 0.1, 0.1]),
-                   #         WindRoseVelocityBucket(_from=2.345, to=3.456, fractions=[0.0, 0.0, 0.1, 0.1]),
-                   #         WindRoseVelocityBucket(_from=3.456, to=None, fractions=[0.0, 0.0, 0.0, 0.1]),
-                   #     ],
-                   #     velocity_unit="m/s",
-                   #     exposure_categories=["EC2", "EC2", "EC2", "EC2"],
-                   #     wind_engineering_standard="EU",
-                   #     wind_data_source="USER_UPLOAD",
-                   #     add_surface_roughness=False,
-                   # ),
-            
-            pass
-            
+
     def set_wind_conditions(self): 
         
         self.wind_conditions = sim_sdk.WindConditions(
@@ -499,7 +509,7 @@ class PedestrianWindComfort():
             mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
         )
 
-        simulation_spec = SimulationSpec(name="PWC_WindRose", geometry_id= self.geometry_id, model=model)
+        simulation_spec = SimulationSpec(name="PWC_WindConditions_MTB", geometry_id= self.geometry_id, model=model)
 
         # Create simulation
         simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id
