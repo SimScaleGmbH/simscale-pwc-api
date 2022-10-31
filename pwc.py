@@ -26,7 +26,7 @@ for i, cad in enumerate(name_of_files_to_upload):
     pwc.upload_geometry(cad, geometry_path[i])
 
 """Simulation Setup"""
-"""STEP 1: Define Region Of Interest"""
+"""STEP 1: Region Of Interest"""
 #Uncomment the function below only if you plan to define a custom WT
 # pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
 #                        inflow_ext = 200, outflow_ext = 500)
@@ -35,7 +35,7 @@ pwc.set_region_of_interest(radius = 300, center = [50,0], ground_height = 0,
                            north_angle = 0, 
                            wt_size = 'moderate') #moderate, large, custom 
 
-"""STEP 2: Define The Wind Conditions"""
+"""STEP 2: The Wind Conditions"""
 #Define information that characterizes the incoming wind
 pwc.set_geographical_location(latitude = 42.3600825, longitude = -71.0588801)
 pwc.set_num_wind_directions(4)
@@ -45,6 +45,13 @@ pwc.set_surface_roughness(surface_roughness= True)
 pwc.set_wind_data_source("METEOBLUE")
 pwc.set_wind_rose()
 
+
+"""STEP 3: Pedestrian Comfort Map"""
+pwc.set_pedestrian_comfort_map_name("ComfortMap1")
+pwc.set_height_above_ground(2)
+pwc.set_pedestrian_comfort_ground('absolute') #absolute, relative
+pwc.set_pedestrian_comfort_map()
+pwc.add_more_comfort_maps("ComfortMap2", 3, "absolute")
 
 pwc.set_simulation_spec()
 

@@ -87,7 +87,12 @@ class PedestrianWindComfort():
         self.wind_velocity_unit = "m/s"
         self.add_surface_roughness = True 
         
-        
+        #Pedestrian Comfort Map Variables
+        self.pedestrian_comfort_map = []
+        self.pedestrian_comfort_surface = None
+        self.pedestrian_surface_name = None 
+        self.height_above_ground = None
+        self.comfort_ground_type = None
         
     """Functions that allows setting up the API connection"""
     
@@ -429,7 +434,8 @@ class PedestrianWindComfort():
     def set_velocity_buckets(self): 
         #create a function that allows the user to define up to 16 WD using 
         #velocity buckets
-            
+            pass 
+        
     def set_wind_rose (self):
     
         if self.wind_data_source == "METEOBLUE" : 
@@ -477,6 +483,45 @@ class PedestrianWindComfort():
             geographical_location= self.geo_location_obj,
             wind_rose= self.wind_rose 
         )
+    
+    def set_pedestrian_comfort_map_name(self, name): 
+        
+        self.pedestrian_surface_name = name
+    
+    def set_height_above_ground(self, height): 
+        
+        self.height_above_ground = sim_sdk.DimensionalLength(height, "m")
+        
+    
+    def set_pedestrian_comfort_ground(self, ground_type): 
+        
+        if ground_type == "absolute":
+        
+            self.comfort_ground_type = sim_sdk.GroundAbsolute()
+        
+        else: 
+            #Add code that allows the user to select a face and use that as 
+            # a comfort surface
+            pass
+        
+    
+    def set_pedestrian_comfort_map(self):
+        
+        self.pedestrian_comfort_map = [    
+            PedestrianComfortSurface(
+            name= self.pedestrian_surface_name,
+            height_above_ground=self.height_above_ground,
+            ground=self.comfort_ground_type)]
+            
+            
+    def add_more_comfort_maps(self,name,height,ground):
+        
+        self.pedestrian_comfort_map.append(   
+            PedestrianComfortSurface(
+            name= name,
+            height_above_ground= sim_sdk.DimensionalLength(height, "m"), 
+            ground=self.comfort_ground_type))
+         
         
     def set_simulation_spec(self):
         # Define simulation spec
@@ -487,11 +532,9 @@ class PedestrianWindComfort():
                      geographical_location= self.geo_location_obj,
                      wind_rose = self.wind_rose)
             ,
-            pedestrian_comfort_map=[
-                PedestrianComfortSurface(
-                    name="Pedestrian level 1", height_above_ground=DimensionalLength(1.5, "m"), ground=GroundAbsolute()
-                )
-            ],
+            pedestrian_comfort_map=
+                    self.pedestrian_comfort_map
+            ,
             simulation_control=WindComfortSimulationControl(
                 max_direction_run_time=DimensionalTime(10000, "s"), number_of_fluid_passes=0.2
             ),
@@ -509,7 +552,7 @@ class PedestrianWindComfort():
             mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
         )
 
-        simulation_spec = SimulationSpec(name="PWC_WindConditions_MTB", geometry_id= self.geometry_id, model=model)
+        simulation_spec = SimulationSpec(name="PWC_AddComfortMap", geometry_id= self.geometry_id, model=model)
 
         # Create simulation
         simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id
