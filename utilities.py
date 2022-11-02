@@ -94,6 +94,11 @@ class PedestrianWindComfort():
         self.height_above_ground = None
         self.comfort_ground_type = None
         
+        #Simulation Control Variables 
+        self.max_dir_run_time = 10000
+        self.num_of_fluid_passes = 3
+        self.sim_control = None 
+        
     """Functions that allows setting up the API connection"""
     
     def _get_variables_from_env(self):
@@ -522,6 +527,23 @@ class PedestrianWindComfort():
             height_above_ground= sim_sdk.DimensionalLength(height, "m"), 
             ground=self.comfort_ground_type))
          
+    def set_maximum_run_time(self, max_run_time):
+        
+        self.max_dir_run_time = DimensionalTime(max_run_time, "s")
+    
+    def set_num_fluid_passes(self, fluid_pass): 
+        
+        self.num_of_fluid_passes = fluid_pass
+    
+    def set_simulation_control(self):
+        
+        self.sim_control = sim_sdk.WindComfortSimulationControl(
+            max_direction_run_time =self.max_dir_run_time, 
+            number_of_fluid_passes = self.num_of_fluid_passes)
+    
+    
+    def set_mesh_settings(self):
+        pass
         
     def set_simulation_spec(self):
         # Define simulation spec
@@ -535,9 +557,8 @@ class PedestrianWindComfort():
             pedestrian_comfort_map=
                     self.pedestrian_comfort_map
             ,
-            simulation_control=WindComfortSimulationControl(
-                max_direction_run_time=DimensionalTime(10000, "s"), number_of_fluid_passes=0.2
-            ),
+            simulation_control= self.sim_control
+            ,
             advanced_modelling=AdvancedModelling(),
             additional_result_export=FluidResultControls(
                 transient_result_control=TransientResultControl(
@@ -552,7 +573,7 @@ class PedestrianWindComfort():
             mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
         )
 
-        simulation_spec = SimulationSpec(name="PWC_AddComfortMap", geometry_id= self.geometry_id, model=model)
+        simulation_spec = SimulationSpec(name="PWC_SimControl", geometry_id= self.geometry_id, model=model)
 
         # Create simulation
         simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id

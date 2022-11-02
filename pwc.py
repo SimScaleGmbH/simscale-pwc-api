@@ -51,7 +51,17 @@ pwc.set_pedestrian_comfort_map_name("ComfortMap1")
 pwc.set_height_above_ground(2)
 pwc.set_pedestrian_comfort_ground('absolute') #absolute, relative
 pwc.set_pedestrian_comfort_map()
-pwc.add_more_comfort_maps("ComfortMap2", 3, "absolute")
+pwc.add_more_comfort_maps("ComfortMap2", 3, "absolute") # call this for each new comfort map 
+
+
+"""Simulation Control"""
+pwc.set_maximum_run_time(10000)
+pwc.set_num_fluid_passes(3)
+pwc.set_simulation_control()
+
+"""Mesh Settings"""
+
+
 
 pwc.set_simulation_spec()
 
