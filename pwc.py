@@ -26,6 +26,7 @@ for i, cad in enumerate(name_of_files_to_upload):
     pwc.upload_geometry(cad, geometry_path[i])
 
 """Simulation Setup"""
+
 """STEP 1: Region Of Interest"""
 #Uncomment the function below only if you plan to define a custom WT
 # pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
@@ -45,7 +46,6 @@ pwc.set_surface_roughness(surface_roughness= True)
 pwc.set_wind_data_source("METEOBLUE")
 pwc.set_wind_rose()
 
-
 """STEP 3: Pedestrian Comfort Map"""
 pwc.set_pedestrian_comfort_map_name("ComfortMap1")
 pwc.set_height_above_ground(2)
@@ -53,15 +53,16 @@ pwc.set_pedestrian_comfort_ground('absolute') #absolute, relative
 pwc.set_pedestrian_comfort_map()
 pwc.add_more_comfort_maps("ComfortMap2", 3, "absolute") # call this for each new comfort map 
 
-
 """Simulation Control"""
 pwc.set_maximum_run_time(10000)
 pwc.set_num_fluid_passes(3)
 pwc.set_simulation_control()
 
 """Mesh Settings"""
-
-
+# pwc.set_mesh_min_cell_size(0.25) #call this function only when fineness is set to "TargetSize"
+pwc.set_mesh_fineness("VeryCoarse") #VeryCoarse,Coarse,Moderate,Fine,VeryFine,TargetSize
+pwc.set_reynolds_scaling(scaling = 0.5, auto_scale= False) #The value of scaling is used only when auto_scale = False
+pwc.set_mesh_settings()
 
 pwc.set_simulation_spec()
 

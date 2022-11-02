@@ -99,6 +99,11 @@ class PedestrianWindComfort():
         self.num_of_fluid_passes = 3
         self.sim_control = None 
         
+        #Mesh Settings Variables
+        self.mesh_fineness = None
+        self.reynolds_scaling = None 
+        self.mesh_master = None 
+        self.min_cell_size = None 
     """Functions that allows setting up the API connection"""
     
     def _get_variables_from_env(self):
@@ -542,8 +547,51 @@ class PedestrianWindComfort():
             number_of_fluid_passes = self.num_of_fluid_passes)
     
     
+    def set_mesh_min_cell_size(self, min_cell_size): 
+        
+        self.min_cell_size = DimensionalLength(min_cell_size, "m")
+        
+    def set_mesh_fineness(self,fineness): 
+        
+            if fineness == "VeryCoarse": 
+                self.mesh_fineness = sim_sdk.PacefishFinenessVeryCoarse()
+                
+            elif fineness == "Coarse":
+                self.mesh_fineness = sim_sdk.PacefishFinenessCoarse()
+    
+            elif fineness == "Moderate":
+                self.mesh_fineness = sim_sdk.PacefishFinenessModerate()
+    
+            elif fineness == "Fine":
+                self.mesh_fineness = sim_sdk.PacefishFinenessFine()
+    
+            elif fineness == "VeryFine":
+                self.mesh_fineness = sim_sdk.PacefishFinenessVeryFine()
+        
+            elif fineness == "TargetSize": 
+                
+                self.mesh_fineness = sim_sdk.PacefishFinenessTargetSize(
+                type ="TARGET_SIZE",
+                minimum_cell_size= self.min_cell_size)
+        
+                              
+    def set_reynolds_scaling(self, scaling = 1 , auto_scale = True):
+        
+        if auto_scale == True: 
+            
+            self.reynolds_scaling = sim_sdk.AutomaticReynoldsScaling(
+                            type='AUTOMATIC_REYNOLDS_SCALING')        
+        else: 
+            
+            self.reynolds_scaling = sim_sdk.ManualReynoldsScaling(
+                                        type='MANUAL_REYNOLDS_SCALING', 
+                                        reynolds_scaling_factor=scaling)
+            
     def set_mesh_settings(self):
-        pass
+        
+        self.mesh_master = sim_sdk.WindComfortMesh(
+                            wind_comfort_fineness= self.mesh_fineness,
+                            reynolds_scaling_type= self.reynolds_scaling)
         
     def set_simulation_spec(self):
         # Define simulation spec
@@ -570,10 +618,11 @@ class PedestrianWindComfort():
                     fraction_from_end=0.1,
                 ),
             ),
-            mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
+            # mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
+            mesh_settings=self.mesh_master,
         )
 
-        simulation_spec = SimulationSpec(name="PWC_SimControl", geometry_id= self.geometry_id, model=model)
+        simulation_spec = SimulationSpec(name="PWC_TargetMesh_ManualRE", geometry_id= self.geometry_id, model=model)
 
         # Create simulation
         simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id
