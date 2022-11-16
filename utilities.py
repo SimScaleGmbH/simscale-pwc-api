@@ -11,17 +11,21 @@ import shutil
 
 import isodate
 import urllib3
-from simscale_sdk import Configuration, ApiClient, ProjectsApi, StorageApi, GeometryImportsApi, GeometriesApi, \
-    SimulationsApi, SimulationRunsApi, ReportsApi, Project, GeometryImportRequest, ApiException, WindData
-from simscale_sdk import GeometryImportRequestLocation, GeometryImportRequestOptions
-from simscale_sdk import SimulationSpec, SimulationRun
-from simscale_sdk import UserInputCameraSettings, ProjectionType, Vector3D, ModelSettings, Part, \
-    ScreenshotOutputSettings, Color, ResolutionInfo, ScreenshotReportProperties, ReportRequest
-from simscale_sdk import WindComfort, RegionOfInterest, DimensionalLength, DimensionalVector2dLength, DecimalVector2d, \
-    DimensionalAngle, AdvancedROISettings, WindTunnelSizeModerate, WindConditions, GeographicalLocation, WindRose, \
-    WindRoseVelocityBucket, PedestrianComfortSurface, GroundAbsolute, WindComfortSimulationControl, AdvancedModelling, \
-    TransientResultControl, CoarseResolution, StatisticalAveragingResultControlV2, PacefishFinenessVeryCoarse, \
-    WindComfortMesh, DimensionalTime, FluidResultControls
+
+import json 
+import requests
+
+# from simscale_sdk import Configuration, ApiClient, ProjectsApi, StorageApi, GeometryImportsApi, GeometriesApi, \
+#     SimulationsApi, SimulationRunsApi, ReportsApi, Project, GeometryImportRequest, ApiException, WindData
+# from simscale_sdk import GeometryImportRequestLocation, GeometryImportRequestOptions
+# from simscale_sdk import SimulationSpec, SimulationRun
+# from simscale_sdk import UserInputCameraSettings, ProjectionType, Vector3D, ModelSettings, Part, \
+#     ScreenshotOutputSettings, Color, ResolutionInfo, ScreenshotReportProperties, ReportRequest
+# from simscale_sdk import WindComfort, RegionOfInterest, DimensionalLength, DimensionalVector2dLength, DecimalVector2d, \
+#     DimensionalAngle, AdvancedROISettings, WindTunnelSizeModerate, WindConditions, GeographicalLocation, WindRose, \
+#     WindRoseVelocityBucket, PedestrianComfortSurface, GroundAbsolute, WindComfortSimulationControl, AdvancedModelling, \
+#     TransientResultControl, CoarseResolution, StatisticalAveragingResultControlV2, PacefishFinenessVeryCoarse, \
+#     WindComfortMesh, DimensionalTime, FluidResultControls
 
 import simscale_sdk as sim_sdk
 
@@ -104,6 +108,14 @@ class PedestrianWindComfort():
         self.reynolds_scaling = None 
         self.mesh_master = None 
         self.min_cell_size = None 
+        
+        #Simulation Creation Variables
+        self.model = None 
+        self.simulation_spec = None
+        self.simulation_id   = None
+        self.simulation_run  = None 
+        self.run_id = None
+        
     """Functions that allows setting up the API connection"""
     
     def _get_variables_from_env(self):
@@ -518,7 +530,7 @@ class PedestrianWindComfort():
     def set_pedestrian_comfort_map(self):
         
         self.pedestrian_comfort_map = [    
-            PedestrianComfortSurface(
+            sim_sdk.PedestrianComfortSurface(
             name= self.pedestrian_surface_name,
             height_above_ground=self.height_above_ground,
             ground=self.comfort_ground_type)]
@@ -527,14 +539,14 @@ class PedestrianWindComfort():
     def add_more_comfort_maps(self,name,height,ground):
         
         self.pedestrian_comfort_map.append(   
-            PedestrianComfortSurface(
+            sim_sdk.PedestrianComfortSurface(
             name= name,
             height_above_ground= sim_sdk.DimensionalLength(height, "m"), 
             ground=self.comfort_ground_type))
          
     def set_maximum_run_time(self, max_run_time):
         
-        self.max_dir_run_time = DimensionalTime(max_run_time, "s")
+        self.max_dir_run_time = sim_sdk.DimensionalTime(max_run_time, "s")
     
     def set_num_fluid_passes(self, fluid_pass): 
         
@@ -549,7 +561,7 @@ class PedestrianWindComfort():
     
     def set_mesh_min_cell_size(self, min_cell_size): 
         
-        self.min_cell_size = DimensionalLength(min_cell_size, "m")
+        self.min_cell_size = sim_sdk.DimensionalLength(min_cell_size, "m")
         
     def set_mesh_fineness(self,fineness): 
         
@@ -593,9 +605,10 @@ class PedestrianWindComfort():
                             wind_comfort_fineness= self.mesh_fineness,
                             reynolds_scaling_type= self.reynolds_scaling)
         
-    def set_simulation_spec(self):
+    def set_simulation_spec(self, simulation_name):
         # Define simulation spec
-        model = WindComfort(
+                
+        self.model = sim_sdk.WindComfort(
             region_of_interest= self.region_of_interest
             ,
             wind_conditions=  sim_sdk.WindConditions(
@@ -607,23 +620,85 @@ class PedestrianWindComfort():
             ,
             simulation_control= self.sim_control
             ,
-            advanced_modelling=AdvancedModelling(),
-            additional_result_export=FluidResultControls(
-                transient_result_control=TransientResultControl(
-                    write_control=CoarseResolution(),
+            advanced_modelling=sim_sdk.AdvancedModelling(),
+            additional_result_export=sim_sdk.FluidResultControls(
+                transient_result_control=sim_sdk.TransientResultControl(
+                    write_control=sim_sdk.CoarseResolution(),
                     fraction_from_end=0.1,
                 ),
-                statistical_averaging_result_control=StatisticalAveragingResultControlV2(
-                    sampling_interval=CoarseResolution(),
+                statistical_averaging_result_control=sim_sdk.StatisticalAveragingResultControlV2(
+                    sampling_interval=sim_sdk.CoarseResolution(),
                     fraction_from_end=0.1,
                 ),
             ),
-            # mesh_settings=WindComfortMesh(wind_comfort_fineness=PacefishFinenessVeryCoarse()),
             mesh_settings=self.mesh_master,
         )
 
-        simulation_spec = SimulationSpec(name="PWC_TargetMesh_ManualRE", geometry_id= self.geometry_id, model=model)
-
+        self.simulation_spec = sim_sdk.SimulationSpec(name=simulation_name, geometry_id= self.geometry_id, model=self.model)
+        
+        
+    def create_simulation(self):
+        
         # Create simulation
-        simulation_id = self.simulation_api.create_simulation(self.project_id, simulation_spec).simulation_id
-        print(f"simulationId: {simulation_id}")
+        self.simulation_id = self.simulation_api.create_simulation(self.project_id, self.simulation_spec).simulation_id
+        print(f"simulationId: {self.simulation_id}")
+
+
+    def estimate_simulation(self):
+        
+        # Estimate simulation
+        try:
+            estimation = self.simulation_api.estimate_simulation_setup(self.project_id, self.simulation_id)
+            # print(f"Simulation estimation: {estimation}\n")
+            print("*"*10)
+            print(f"Simulation estimation\n")
+            print("Maximum number of cells: {}\n".format(estimation.cell_count.interval_max))
+            print("Minimum number of cells: {}".format(estimation.cell_count.interval_min))
+            print("-"*10)
+            print("Maximum GPUh consupmtion: {}\n".format(estimation.compute_resource.interval_max))
+            print("Minimum GPUh consupmtion: {}".format(estimation.compute_resource.interval_min))
+            print("-"*10)
+            print("Maximum Simulation Time: {}\n".format(estimation.duration.interval_max))
+            print("Minimum Simulation Time: {}".format(estimation.duration.interval_min))
+            print("*"*10)
+
+            if estimation.compute_resource is not None and estimation.compute_resource.value > 10.0:
+                raise Exception("Too expensive", estimation)
+        
+            if estimation.duration is not None:
+                max_runtime = isodate.parse_duration(estimation.duration.interval_max).total_seconds()
+                max_runtime = max(3600, max_runtime * 2)
+            else:
+                max_runtime = 36000
+                print(f"Simulation estimated duration not available, assuming max runtime of {max_runtime} seconds")
+        except ApiException as ae:
+            if ae.status == 422:
+                max_runtime = 36000
+                print(f"Simulation estimation not available, assuming max runtime of {max_runtime} seconds")
+            else:
+                raise ae
+              
+                
+    def check_simulation_setup(self):
+        
+        # Check simulation
+        check = self.simulation_api.check_simulation_setup(self.project_id, self.simulation_id)
+        warnings = [entry for entry in check.entries if entry.severity == "WARNING"]
+        print(f"Simulation check warnings: {warnings}")
+        errors = [entry for entry in check.entries if entry.severity == "ERROR"]
+        if errors:            
+            raise Exception("Simulation check failed - Correct the following error:"
+                            , check.entries[0].message)
+
+    def start_simulation_run(self, run_name): 
+        
+        # Create simulation run
+        self.simulation_run = sim_sdk.SimulationRun(name="Run 1")
+        self.simulation_run = self.simulation_run_api.create_simulation_run(self.project_id, self.simulation_id, self.simulation_run)
+        self.run_id = self.simulation_run.run_id
+        print(f"runId: {self.run_id}")
+        
+        #Start Simulation Run 
+        self.simulation_run_api.start_simulation_run(self.project_id, self.simulation_id, self.run_id)
+        self.simulation_run = self.simulation_run_api.get_simulation_run(self.project_id, self.simulation_id, self.run_id)
+
