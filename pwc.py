@@ -23,12 +23,12 @@ name_of_files_to_upload = ["Base_Design_Boston", "Design_1_Boston", "Design_2_Bo
 base_path = pathlib.Path().cwd() / "Geometries" 
 geometry_path = pwc.zip_cad_for_upload(name_of_files_to_upload,base_path)
 
-
+#Iterate over the CAD models and run the simulations of each design in parallel
 for i, cad in enumerate(name_of_files_to_upload): 
+    #Upload the list of provided CAD models to the SimScale project
     pwc.upload_geometry(cad, geometry_path[i])
 
     """Simulation Setup"""
-    
     """STEP 1: Region Of Interest"""
     #Uncomment the function below only if you plan to define a custom WT
     # pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
@@ -42,10 +42,10 @@ for i, cad in enumerate(name_of_files_to_upload):
     #Define information that characterizes the incoming wind
     pwc.set_geographical_location(latitude = 42.3600825, longitude = -71.0588801)
     pwc.set_num_wind_directions(8)
-    pwc.set_wind_engineering_standard("EU")
-    pwc.set_wind_exposure_category(["EC2"]* 8)
+    pwc.set_wind_engineering_standard("EU") #["EU", "AS_NZS", "NEN8100", "LONDON"]
+    pwc.set_wind_exposure_category(["EC2"]* 8) #["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"]
     pwc.set_surface_roughness(surface_roughness= True)
-    pwc.set_wind_data_source("METEOBLUE")
+    pwc.set_wind_data_source("METEOBLUE") #METEOBLUE, USER_UPLOAD
     pwc.set_wind_rose()
     
     """STEP 3: Pedestrian Comfort Map"""
@@ -62,14 +62,16 @@ for i, cad in enumerate(name_of_files_to_upload):
     pwc.set_simulation_control()
     
     """Mesh Settings"""
-    # pwc.set_mesh_min_cell_size(0.25) #call this function only when fineness is set to "TargetSize"
+    #call this function only when fineness is going to be set as "TargetSize"
+    # pwc.set_mesh_min_cell_size(0.25) 
+    
     pwc.set_mesh_fineness("VeryCoarse") #VeryCoarse,Coarse,Moderate,Fine,VeryFine,TargetSize
     pwc.set_reynolds_scaling(scaling = 0.1, auto_scale= True) #The value of scaling is used only when auto_scale = False
     pwc.set_mesh_settings()
     
     """Start Simulation"""
-    pwc.set_simulation_spec(simulation_name= "Run_Design{}".format(i))
+    pwc.set_simulation_spec(simulation_name= "Design{}".format(i))
     pwc.create_simulation()
     pwc.check_simulation_setup()
     pwc.estimate_simulation()
-    pwc.start_simulation_run(run_name = "Design{}_4WD".format(i) )
+    pwc.start_simulation_run(run_name = "Design{}_8WD".format(i))

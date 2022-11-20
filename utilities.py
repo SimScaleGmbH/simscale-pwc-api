@@ -15,18 +15,6 @@ import urllib3
 import json 
 import requests
 
-# from simscale_sdk import Configuration, ApiClient, ProjectsApi, StorageApi, GeometryImportsApi, GeometriesApi, \
-#     SimulationsApi, SimulationRunsApi, ReportsApi, Project, GeometryImportRequest, ApiException, WindData
-# from simscale_sdk import GeometryImportRequestLocation, GeometryImportRequestOptions
-# from simscale_sdk import SimulationSpec, SimulationRun
-# from simscale_sdk import UserInputCameraSettings, ProjectionType, Vector3D, ModelSettings, Part, \
-#     ScreenshotOutputSettings, Color, ResolutionInfo, ScreenshotReportProperties, ReportRequest
-# from simscale_sdk import WindComfort, RegionOfInterest, DimensionalLength, DimensionalVector2dLength, DecimalVector2d, \
-#     DimensionalAngle, AdvancedROISettings, WindTunnelSizeModerate, WindConditions, GeographicalLocation, WindRose, \
-#     WindRoseVelocityBucket, PedestrianComfortSurface, GroundAbsolute, WindComfortSimulationControl, AdvancedModelling, \
-#     TransientResultControl, CoarseResolution, StatisticalAveragingResultControlV2, PacefishFinenessVeryCoarse, \
-#     WindComfortMesh, DimensionalTime, FluidResultControls
-
 import simscale_sdk as sim_sdk
 
 class PedestrianWindComfort():
@@ -256,6 +244,25 @@ class PedestrianWindComfort():
              
     def zip_cad_for_upload(self, file_name, base_path): 
         
+        '''
+        Take a list of the CAD file names and their associated path then zips 
+        each CAD file separately and submits it for upload 
+        
+        Note: Have all the CAD files stored in the same directory
+        
+        Parameters
+        ----------
+        file_name : list
+            A list with the exact names of the CAD files to upload
+            
+        base_path : Pathlib Path
+            path to the directory that contains the CAD files 
+
+        Returns
+        -------
+        geometry_path : path of the zipped file
+
+        '''
         geometry_path = []
         
         #Loop over the CAD files needed for upload
@@ -368,6 +375,36 @@ class PedestrianWindComfort():
             
     def set_region_of_interest(self, radius, center ,ground_height, north_angle, wt_size = 'moderate'):
         
+        '''
+        Define the region of interest of the PWC simulation 
+        
+        Parameters
+        ----------
+        radius : int
+            radius of the region of interest 
+                
+        center : list
+            list containing the x and y coordinates of the roi center
+                
+        ground_height: float 
+            defines the bottom floor of the wind tunnel 
+                
+        north_angle: int/float
+            defines the north direction of your CAD model 
+        
+        wt_size : str Optional 
+            possiblity to choose from three different wind tunnel sizes 
+            modreate, large or custom sizing
+                
+            The default is moderate
+            
+        Returns
+        -------
+        None.
+
+        '''
+        
+        
         self.roi_radius , self.center   = radius , center
         self.ground_height , self.north_angle = ground_height , north_angle
         self.set_wind_tunnel_size(wt_size)
@@ -383,10 +420,25 @@ class PedestrianWindComfort():
       
     def set_wind_tunnel_size(self, wt_size = "moderate"):
         
-        """ If a custom wind tunnel size is to be chosen, make sure to run 
-        the function set_custom_wt_size to define the size of the custom 
-        wind tunnel"""
+        '''
+        Defines the size of the wind tunnel
         
+        note: If a custom wind tunnel size is to be chosen, make sure to run 
+        the function set_custom_wt_size to define the size of the custom 
+        wind tunnel
+        
+        Parameters
+        ----------
+        wt_size : str Optional 
+            possiblity to choose from three different wind tunnel sizes 
+            modreate, large or custom sizing
+
+        Returns
+        -------
+        wind_tunnel_size_obj
+        
+        '''
+                
         self.wind_tunnel_size =  wt_size
         
         if self.wind_tunnel_size  == "moderate" : 
@@ -406,60 +458,198 @@ class PedestrianWindComfort():
                 self.inflow_extension, 
                 self.outflow_extension,
                 )
-            
-            pass
-    
+                
         return self.wind_tunnel_size_obj
         
     def set_custom_wt_size(self, height_ext, side_ext, inflow_ext, outflow_ext):
         
-        self.wind_tunnel_type = 'WIND_TUNNEL_SIZE_CUSTOM'
-        self.height_extension  = sim_sdk.DimensionalLength(height_ext, "m")
-        self.side_extension    = sim_sdk.DimensionalLength(side_ext, "m")
-        self.inflow_extension  = sim_sdk.DimensionalLength(inflow_ext, "m")
-        self.outflow_extension = sim_sdk.DimensionalLength(outflow_ext, "m")
+         '''
+         Defines the dimensions of the custom wind tunnel
+         
+         Parameters
+         ----------
+         height_ext : int 
+             height extension of the wind tunnel 
+             
+        side_ext : int 
+            side extension of the wind tunnel
+            
+        inflow_ext: int 
+            extension of the inlet face of the wind tunnel
+            
+        outflow_ext: int 
+            extension of the outlet face of the wind tunnel
+    
+         Returns
+         -------
+         None. 
+         
+         '''
+         self.wind_tunnel_type  = 'WIND_TUNNEL_SIZE_CUSTOM'
+         self.height_extension  = sim_sdk.DimensionalLength(height_ext, "m")
+         self.side_extension    = sim_sdk.DimensionalLength(side_ext, "m")
+         self.inflow_extension  = sim_sdk.DimensionalLength(inflow_ext, "m")
+         self.outflow_extension = sim_sdk.DimensionalLength(outflow_ext, "m")
         
     
     def set_num_wind_directions(self, num_wind_dir): 
         
-        self.number_wind_directions = num_wind_dir
+         '''
+         sets the number of wind directions to be submitted for simulation
+         
+         Parameters
+         ----------
+         num_wind_dir : int 
+             number of wind directions a choice from : 2, 4, 6, 8, 12, 16 ,36 
+             
+             note: 36 wind directions is only possible when the wind data is 
+             either manually imported or if the simulation is done using 
+             the City of London standard 
+             
+         Returns
+         -------
+         number_wind_directions  
+         
+         '''
+        
+         self.number_wind_directions = num_wind_dir
             
-    def set_wind_engineering_standard(self, wind_eng_std): 
+    def set_wind_engineering_standard(self, wind_eng_std):
+        
+        '''
+        set the wind engineering standard type 
+        
+        choice from : ["EU", "AS_NZS", "NEN8100", "LONDON"]
+        
+        Parameters
+        ----------
+        wind_eng_std: str 
+            a string of one of the standars mentioned above 
+            
+        Returns 
+        -------
+        wind_engineering_standard 
+        
+        '''
         
         self.wind_engineering_standard = wind_eng_std
     
     def set_wind_exposure_category(self, exposure_categories):
         
+        '''
+        Set the wind exposure category associated with each incoming wind 
+        direction 
+        
+        The order of the expsure category list must start with north and progress
+        in a clockwise fashion
+                
+        choice from : ["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"] 
+        
+        Parameters
+        ----------
+        exposure_categories: list 
+            list of the exposure categories of each respective wind direction            
+        Returns 
+        -------
+        exposure_category 
+        
+        '''
         self.exposure_category = exposure_categories
         
-    def set_surface_roughness(self, surface_roughness): 
+    def set_surface_roughness(self, surface_roughness = True): 
+        
+        '''
+        Set the surface roughness of the wind tunnel floor
+        Based on the exposure cateogry of the each wind direction the surface
+        roughness of the wind tunnel floor would be mapped accordingly 
+        
+        Defaults is True 
+        
+        Parameters
+        ----------
+        surface_roughness: boolean 
+            option to add or ignore surface roughness 
+            
+        Returns 
+        -------
+        add_surface_roughness 
+        
+        '''
         
         self.add_surface_roughness = surface_roughness
         
     def set_wind_data_source(self, data_source): 
         
+        '''
+        Sets the type of wind data import 
+        
+        Choice from : [METEOBLUE, USER_UPLOAD]    
+        
+        Parameters
+        ----------
+        data_source: str
+            string of the name of the wind data type 
+            
+        Returns 
+        -------
+        wind_data_source 
+        
+        '''
+        
         self.wind_data_source = data_source 
         
     def set_geographical_location(self, latitude, longitude): 
-    
-            #For Meteoblue
-            self.latitude_meteoblue  = str(latitude)
-            self.longitude_meteoblue = str(longitude)
-            # Required for simulation setup and for manual wind data input
-            self.latitude  = sim_sdk.DimensionalAngle(latitude, "°")
-            self.longitude = sim_sdk.DimensionalAngle(longitude, "°")
-            
-            self.geo_location_obj = sim_sdk.GeographicalLocation(
-                latitude= self.latitude, 
-                longitude=self.longitude)       
-    
+        '''
+        Set the coordinats of the location of interest 
+                
+        Parameters
+        ----------
+        latitude: float
+            latitudal coordinates
+        
+        longitude: float
+            longitudenal coordinates
+         
+        Returns 
+        -------
+        None.  
+        
+        '''
+        #For Meteoblue
+        self.latitude_meteoblue  = str(latitude)
+        self.longitude_meteoblue = str(longitude)
+        # Required for simulation setup and for manual wind data input
+        self.latitude  = sim_sdk.DimensionalAngle(latitude, "°")
+        self.longitude = sim_sdk.DimensionalAngle(longitude, "°")
+        
+        self.geo_location_obj = sim_sdk.GeographicalLocation(
+            latitude= self.latitude, 
+            longitude=self.longitude)       
+
     def set_velocity_buckets(self): 
         #create a function that allows the user to define up to 16 WD using 
         #velocity buckets
             pass 
         
-    def set_wind_rose (self):
+    def set_wind_rose(self):
     
+        '''
+        Based on the user choice, the logic for either setting the wind conditons 
+        using meteoblue or user upload is invoked. 
+        
+        note: 
+        The user upload method requires the addition of a function that would 
+        allow to define the velocity buckets (number of directions)
+                        
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
         if self.wind_data_source == "METEOBLUE" : 
             
             print("Importing wind data from Meteoblue..")
@@ -501,21 +691,78 @@ class PedestrianWindComfort():
 
     def set_wind_conditions(self): 
         
+        '''
+        Collects the geographical location and wind rose input and submits them
+        to the wind conditions setup of the simulation 
+        
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
         self.wind_conditions = sim_sdk.WindConditions(
             geographical_location= self.geo_location_obj,
-            wind_rose= self.wind_rose 
-        )
+            wind_rose= self.wind_rose)
     
     def set_pedestrian_comfort_map_name(self, name): 
+        
+        '''
+        Define the name of the pedestrian comfort map 
+                
+        Parameters
+        ----------
+        name: str
+            name of the pedestrian comfort map 
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
         
         self.pedestrian_surface_name = name
     
     def set_height_above_ground(self, height): 
         
+        '''
+        Define the height above ground of the pedestrian comfort map 
+                
+        Parameters
+        ----------
+        height: float 
+            comfort map above ground height
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
         self.height_above_ground = sim_sdk.DimensionalLength(height, "m")
         
     
     def set_pedestrian_comfort_ground(self, ground_type): 
+        
+        '''
+        Define the type of the pedestrian comfort map. Choice of: 
+            [absolute, relative]
+            
+        note: 
+            The logic for the relative comfort map is not implemented yet. 
+            Currently, only absolute comfort maps are supported
+                
+        Parameters
+        ----------
+        ground_type: str 
+            type of the pedestrian comfort map 
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
         
         if ground_type == "absolute":
         
@@ -529,6 +776,18 @@ class PedestrianWindComfort():
     
     def set_pedestrian_comfort_map(self):
         
+        '''
+        Submit the information of the pedestrian comfort map to the simulation 
+        setup
+                
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
         self.pedestrian_comfort_map = [    
             sim_sdk.PedestrianComfortSurface(
             name= self.pedestrian_surface_name,
@@ -538,6 +797,27 @@ class PedestrianWindComfort():
             
     def add_more_comfort_maps(self,name,height,ground):
         
+        '''
+        Allows the user to add more comfort maps depending on the height above 
+        ground
+                
+        Parameters
+        ----------
+        name: str 
+            name of the pedestrian comfort map 
+            
+        height: float 
+            comfort map above ground height
+                
+        ground_type: str 
+            type of the pedestrian comfort map 
+    
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
         self.pedestrian_comfort_map.append(   
             sim_sdk.PedestrianComfortSurface(
             name= name,
@@ -546,14 +826,54 @@ class PedestrianWindComfort():
          
     def set_maximum_run_time(self, max_run_time):
         
+        '''
+        set the maximum runtime of the simulation 
+        Parameters
+        ----------
+        max_run_time: int
+        
+            maximum simulation runtime
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
         self.max_dir_run_time = sim_sdk.DimensionalTime(max_run_time, "s")
     
-    def set_num_fluid_passes(self, fluid_pass): 
+    def set_num_fluid_passes(self, fluid_pass = 3): 
         
+        '''
+        set the number of fluid passes
+        Default is 3 
+        
+        Parameters
+        ----------
+        fluid_pass: int
+            number of fluid passes 
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
         self.num_of_fluid_passes = fluid_pass
     
     def set_simulation_control(self):
         
+        '''
+        submit the simulation control settings to the simulation setup 
+        Default is 3 
+        
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
         self.sim_control = sim_sdk.WindComfortSimulationControl(
             max_direction_run_time =self.max_dir_run_time, 
             number_of_fluid_passes = self.num_of_fluid_passes)
@@ -561,34 +881,86 @@ class PedestrianWindComfort():
     
     def set_mesh_min_cell_size(self, min_cell_size): 
         
+        '''
+        set the minimum cell size in case a 'TargetSize' meshing method is 
+        chosen
+        
+        Parameters
+        ----------
+        min_cell_size: float 
+            minimum cell size of the desired mesh            
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
         self.min_cell_size = sim_sdk.DimensionalLength(min_cell_size, "m")
         
     def set_mesh_fineness(self,fineness): 
         
-            if fineness == "VeryCoarse": 
-                self.mesh_fineness = sim_sdk.PacefishFinenessVeryCoarse()
-                
-            elif fineness == "Coarse":
-                self.mesh_fineness = sim_sdk.PacefishFinenessCoarse()
-    
-            elif fineness == "Moderate":
-                self.mesh_fineness = sim_sdk.PacefishFinenessModerate()
-    
-            elif fineness == "Fine":
-                self.mesh_fineness = sim_sdk.PacefishFinenessFine()
-    
-            elif fineness == "VeryFine":
-                self.mesh_fineness = sim_sdk.PacefishFinenessVeryFine()
+        '''
+        Set the fineness of the mesh 
         
-            elif fineness == "TargetSize": 
-                
-                self.mesh_fineness = sim_sdk.PacefishFinenessTargetSize(
-                type ="TARGET_SIZE",
-                minimum_cell_size= self.min_cell_size)
+        choice from: [VeryCoarse, Coarse, Moderate, Fine, VeryFine, TargetSize]
         
+        Parameters
+        ----------
+        fineness: str 
+            fineness  of mesh to be generated             
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
+        if fineness == "VeryCoarse": 
+            self.mesh_fineness = sim_sdk.PacefishFinenessVeryCoarse()
+            
+        elif fineness == "Coarse":
+            self.mesh_fineness = sim_sdk.PacefishFinenessCoarse()
+
+        elif fineness == "Moderate":
+            self.mesh_fineness = sim_sdk.PacefishFinenessModerate()
+
+        elif fineness == "Fine":
+            self.mesh_fineness = sim_sdk.PacefishFinenessFine()
+
+        elif fineness == "VeryFine":
+            self.mesh_fineness = sim_sdk.PacefishFinenessVeryFine()
+    
+        elif fineness == "TargetSize": 
+            
+            self.mesh_fineness = sim_sdk.PacefishFinenessTargetSize(
+            type ="TARGET_SIZE",
+            minimum_cell_size= self.min_cell_size)
+    
                               
-    def set_reynolds_scaling(self, scaling = 1 , auto_scale = True):
+    def set_reynolds_scaling(self, scaling = 1.0 , auto_scale = True):
         
+        '''
+        Set the reynolds scaling of the simulation 
+        
+        Default is automatic reynolds scaling
+        
+        note: 
+            if auto_scale is set to True then the value of scaling is not 
+            taken into consideration 
+            
+        Parameters
+        ----------
+        scaling: float  
+            reynolds scaling factor 
+            
+        auto_scale: boolean 
+            True for autoscaling and False for manual scaling
+            
+        Returns 
+        -------
+        None.  
+        
+        '''
         if auto_scale == True: 
             
             self.reynolds_scaling = sim_sdk.AutomaticReynoldsScaling(
@@ -601,12 +973,35 @@ class PedestrianWindComfort():
             
     def set_mesh_settings(self):
         
+        '''
+        Submit the mesh settings to the simulation setup
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
+        
         self.mesh_master = sim_sdk.WindComfortMesh(
                             wind_comfort_fineness= self.mesh_fineness,
                             reynolds_scaling_type= self.reynolds_scaling)
         
     def set_simulation_spec(self, simulation_name):
-        # Define simulation spec
+        
+        '''
+        Set the complete simulation spec and submit to the simulation setup 
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
                 
         self.model = sim_sdk.WindComfort(
             region_of_interest= self.region_of_interest
@@ -639,14 +1034,35 @@ class PedestrianWindComfort():
         
     def create_simulation(self):
         
-        # Create simulation
+        '''
+        Create the simulation setup based on the simulation spec 
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
         self.simulation_id = self.simulation_api.create_simulation(self.project_id, self.simulation_spec).simulation_id
         print(f"simulationId: {self.simulation_id}")
 
 
     def estimate_simulation(self):
+        '''
+        Provide an estimation of the maximum and minimum number of cells, 
+        the amount of resources to be used and the total estimated duration of 
+        the simulation 
+
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
         
-        # Estimate simulation
+        '''
         try:
             estimation = self.simulation_api.estimate_simulation_setup(self.project_id, self.simulation_id)
             # print(f"Simulation estimation: {estimation}\n")
@@ -681,7 +1097,19 @@ class PedestrianWindComfort():
                 
     def check_simulation_setup(self):
         
-        # Check simulation
+        '''
+        Conduct a sanity check on the simulation setup before submitting for 
+        solve and report back an error message in the terminal in case the setup
+        is faulty 
+        
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
         check = self.simulation_api.check_simulation_setup(self.project_id, self.simulation_id)
         warnings = [entry for entry in check.entries if entry.severity == "WARNING"]
         print(f"Simulation check warnings: {warnings}")
@@ -692,6 +1120,16 @@ class PedestrianWindComfort():
 
     def start_simulation_run(self, run_name): 
         
+        '''
+        Start the simulation run 
+        Parameters
+        ----------
+
+        Returns 
+        -------
+        None.  
+        
+        '''
         # Create simulation run
         self.simulation_run = sim_sdk.SimulationRun(name="Run 1")
         self.simulation_run = self.simulation_run_api.create_simulation_run(self.project_id, self.simulation_id, self.simulation_run)
