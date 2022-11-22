@@ -1067,17 +1067,17 @@ class PedestrianWindComfort():
             estimation = self.simulation_api.estimate_simulation_setup(self.project_id, self.simulation_id)
             # print(f"Simulation estimation: {estimation}\n")
             print("*"*10)
-            print(f"Simulation estimation\n")
-            print("Maximum number of cells: {}\n".format(estimation.cell_count.interval_max))
-            print("Minimum number of cells: {}".format(estimation.cell_count.interval_min))
+            print(f"Simulation estimation:")    
+            print("Number of cells: {i} - {k}".format(i = estimation.cell_count.interval_min,
+                                                     k = estimation.cell_count.interval_max ))
             print("-"*10)
-            print("Maximum GPUh consupmtion: {}\n".format(estimation.compute_resource.interval_max))
-            print("Minimum GPUh consupmtion: {}".format(estimation.compute_resource.interval_min))
+            print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min,
+                                                      k = estimation.compute_resource.interval_max ))
             print("-"*10)
-            print("Maximum Simulation Time: {}\n".format(estimation.duration.interval_max))
-            print("Minimum Simulation Time: {}".format(estimation.duration.interval_min))
+            print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min,
+                                                      k = estimation.duration.interval_max ))
             print("*"*10)
-
+            
             if estimation.compute_resource is not None and estimation.compute_resource.value > 10.0:
                 raise Exception("Too expensive", estimation)
         
