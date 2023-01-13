@@ -662,11 +662,11 @@ class PedestrianWindComfort():
                 self.wind_rose.wind_engineering_standard = self.wind_engineering_standard
                 self.wind_rose.add_surface_roughness = self.add_surface_roughness
                 
-            except ApiException as ae:
+            except sim_sdk.ApiException as ae:
                 if ae.status == 429:
                     print(
                         f"Exceeded max amount requests, please retry in {ae.headers.get('X-Rate-Limit-Retry-After-Minutes')} minutes")
-                    raise ApiException(ae)
+                    raise sim_sdk.ApiException(ae)
                 else:
                     raise ae
         
@@ -1087,7 +1087,7 @@ class PedestrianWindComfort():
             else:
                 max_runtime = 36000
                 print(f"Simulation estimated duration not available, assuming max runtime of {max_runtime} seconds")
-        except ApiException as ae:
+        except sim_sdk.ApiException as ae:
             if ae.status == 422:
                 max_runtime = 36000
                 print(f"Simulation estimation not available, assuming max runtime of {max_runtime} seconds")
