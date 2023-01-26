@@ -1068,14 +1068,14 @@ class PedestrianWindComfort():
             # print(f"Simulation estimation: {estimation}\n")
             print("*"*10)
             print(f"Simulation estimation:")    
-            print("Number of cells: {i} - {k}".format(i = estimation.cell_count.interval_min,
-                                                     k = estimation.cell_count.interval_max ))
+            print("Number of cells: {i} - {k}".format(i = estimation.cell_count.interval_min.replace('PT',''),
+                                                     k = estimation.cell_count.interval_max.replace('PT','') ))
             print("-"*10)
-            print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min,
-                                                      k = estimation.compute_resource.interval_max ))
+            print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min.replace('PT',''),
+                                                      k = estimation.compute_resource.interval_max.replace('PT','') ))
             print("-"*10)
-            print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min,
-                                                      k = estimation.duration.interval_max ))
+            print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min.replace('PT',''),
+                                                      k = estimation.duration.interval_max.replace('PT','') ))
             print("*"*10)
             
             if estimation.compute_resource is not None and estimation.compute_resource.value > 10.0:
