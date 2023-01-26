@@ -7,6 +7,7 @@ Created on Thu Oct 20 10:09:40 2022
 
 import utilities as util 
 import pathlib 
+import simscale_sdk as sim_sdk
 
 pwc = util.PedestrianWindComfort()
 
@@ -22,12 +23,25 @@ pwc.create_project("pwc_test1234", "123")
 name_of_files_to_upload = ["Boston_Design2_with_terrain"]
 base_path = pathlib.Path().cwd() / "Geometries" 
 geometry_path = pwc.zip_cad_for_upload(name_of_files_to_upload,base_path)
+#Keys are just a name that is a reference. Values are the layer names that are predefined in the CAD tool
+layers  = {"context" : "CONTEXT", "buildings_of_interest" : "BUILDINGS_OF_INTEREST_DESIGN1",
+           "mitigation_object" : "MITIGATION_OBJECTS_GLASS_CANOPY", "context_topo" : "TOPOLOGY_CONTEXT_INCLUSION",
+           "topo_extend" : "TOPOLOGY_EXTENSION", "topo_roi" : "TOPOLOGY_REGION_OF_INTEREST",
+           "topo_inclusion": "TOPOLOGY_TOPOLOGY_INCLUSION"}  
 
 #Iterate over the CAD models and run the simulations of each design in parallel
 for i, cad in enumerate(name_of_files_to_upload): 
     #Upload the list of provided CAD models to the SimScale project
+    
     pwc.upload_geometry(cad, geometry_path[i])
-
+    print(pwc.project_id)
+    print(pwc.geometry_id)
+    for key, value in layers.items():
+        pwc.get_single_entity_name(pwc.project_id, pwc.geometry_id, key = key, attributes=["SDL/TYSA_UNAME"], values=[value])
+        print(pwc.single_entity[key])
+        
+        
+    
     """Simulation Setup"""
     """STEP 1: Region Of Interest"""
     #Uncomment the function below only if you plan to define a custom WT

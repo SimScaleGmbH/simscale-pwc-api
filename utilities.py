@@ -50,6 +50,10 @@ class PedestrianWindComfort():
         self.geometry_id   = ""
         self.geometry_path = ""
         
+        #Geometry Mapping 
+        self.single_entity     = {} #for later: separate the faces from volumes and add a validation rule against duplicate assignments for the same entity (materials)
+        self.multiple_entities = {}
+                
         #Region Of Interest Variables
         self.region_of_interest = None
         self.roi_radius = 300
@@ -279,6 +283,30 @@ class PedestrianWindComfort():
             geometry_path.append(shutil.make_archive(output_filename, 'zip', path)) 
 
         return geometry_path
+    
+    
+    def get_single_entity_name(self, project_id, geometry_id, key ,**kwargs):
+        #Get geometry mappings (make sure the exception of those works properly)
+
+        entity = self.geometry_api.get_geometry_mappings(project_id, geometry_id, **kwargs)._embedded
+        if len(entity) == 1:
+            # print(entity[0].name)
+            self.single_entity[key] = entity[0].name
+            return self.single_entity[key]
+        else:
+            raise Exception(f"Found {len(self.single_entity[key])} entities instead of 1: {self.single_entity[key]}")
+
+    def get_entity_names(self, project_id, geometry_id, key, number = None ,**kwargs):
+        
+        entities = self.geometry_api.get_geometry_mappings(project_id, geometry_id, **kwargs)._embedded
+    
+        if number is None or len(entities) == number:
+            # print(len(entities))
+            self.multiple_entities[key] = entities[0].name
+            return [self.multiple_entities[key] for e in entities]
+        else:
+            raise Exception(f"Found {len(self.multiple_entities[key])} entities instead of {number}: {self.multiple_entities[key]}")
+    
     
     def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
         '''
@@ -773,6 +801,8 @@ class PedestrianWindComfort():
             # a comfort surface
             pass
         
+    def set_pedestrian_comfort_relative(self):
+        pass
     
     def set_pedestrian_comfort_map(self):
         
@@ -1068,11 +1098,11 @@ class PedestrianWindComfort():
             # print(f"Simulation estimation: {estimation}\n")
             print("*"*10)
             print(f"Simulation estimation:")    
-            print("Number of cells: {i} - {k}".format(i = estimation.cell_count.interval_min.replace('PT',''),
-                                                     k = estimation.cell_count.interval_max.replace('PT','') ))
+            print("Number of cells: {i} - {k}".format(i = estimation.cell_count.interval_min,
+                                                     k = estimation.cell_count.interval_max ))
             print("-"*10)
-            print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min.replace('PT',''),
-                                                      k = estimation.compute_resource.interval_max.replace('PT','') ))
+            print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min,
+                                                      k = estimation.compute_resource.interval_max ))
             print("-"*10)
             print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min.replace('PT',''),
                                                       k = estimation.duration.interval_max.replace('PT','') ))
