@@ -296,6 +296,17 @@ class PedestrianWindComfort():
         else:
             raise Exception(f"Found {len(self.single_entity[key])} entities instead of 1: {self.single_entity[key]}")
 
+
+    def get_geometry_mapping(self, project_id, geometry_id, name_entities ,**kwargs):
+        #Get geometry mappings (make sure the exception of those works properly)
+        
+        # Get geometry mappings
+        geometry_mappings = self.geometry_api.get_geometry_mappings(
+            project_id, geometry_id, _class="face", entities=name_entities)
+        entities = [mapping.name for mapping in geometry_mappings._embedded]
+        print(f"entities: {entities}")
+
+
     def get_entity_names(self, project_id, geometry_id, key, number = None ,**kwargs):
         
         entities = self.geometry_api.get_geometry_mappings(project_id, geometry_id, **kwargs)._embedded

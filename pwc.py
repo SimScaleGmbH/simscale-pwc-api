@@ -20,9 +20,13 @@ pwc.create_project("pwc_test1234", "123")
 """Upload Geometry"""
 #Provide the name of the files to upload, if it is a directory simply give the name,
 #if it is a file then add the file extension to the name ex: example.stl
-name_of_files_to_upload = ["Boston_Design2_with_terrain"]
+
+name_of_files_to_upload = ["AccucitiesBristol"]
+# name_of_files_to_upload = ["Boston_Design2_with_terrain", "Design_1_Boston", "Design_2_Boston"]
+
 base_path = pathlib.Path().cwd() / "Geometries" 
 geometry_path = pwc.zip_cad_for_upload(name_of_files_to_upload,base_path)
+
 #Keys are just a name that is a reference. Values are the layer names that are predefined in the CAD tool
 layers  = {"context" : "CONTEXT", "buildings_of_interest" : "BUILDINGS_OF_INTEREST_DESIGN1",
            "mitigation_object" : "MITIGATION_OBJECTS_GLASS_CANOPY", "context_topo" : "TOPOLOGY_CONTEXT_INCLUSION",
@@ -36,10 +40,21 @@ for i, cad in enumerate(name_of_files_to_upload):
     pwc.upload_geometry(cad, geometry_path[i])
     print(pwc.project_id)
     print(pwc.geometry_id)
-    for key, value in layers.items():
-        pwc.get_single_entity_name(pwc.project_id, pwc.geometry_id, key = key, attributes=["SDL/TYSA_UNAME"], values=[value])
-        print(pwc.single_entity[key])
+    
+    # for key, value in layers.items():
+    #     pwc.get_single_entity_name(pwc.project_id, pwc.geometry_id, key = key, values=[value], _class = "face")
+    #     print(pwc.single_entity[key])
         
+    # pwc.get_geometry_mapping(pwc.project_id, pwc.geometry_id, ['CONTEXT', "BUILDINGS_OF_INTEREST_DESIGN1", 'MITIGATION_OBJECTS_GLASS_CANOPY', 
+    #                                                             'TOPOLOGY_CONTEXT_INCLUSION', 'TOPOLOGY_EXTENSION', 'TOPOLOGY_REGION_OF_INTEREST'
+    #                                                                   'TOPOLOGY_TOPOLOGY_INCLUSION'])   
+    
+    #Get geometry mappings
+    geometry_mappings = pwc.geometry_api.get_geometry_mappings(
+        pwc.project_id, pwc.geometry_id, _class="face", entities=['Buildings']
+    )
+    entities = [mapping.name for mapping in geometry_mappings._embedded]
+    print(f"entities: {entities}")
         
     
     """Simulation Setup"""
@@ -48,7 +63,7 @@ for i, cad in enumerate(name_of_files_to_upload):
     # pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
     #                        inflow_ext = 200, outflow_ext = 500)
     
-    pwc.set_region_of_interest(radius = 300, center = [50,0], ground_height = 14.4, 
+    pwc.set_region_of_interest(radius = 300, center = [0,0], ground_height = 14.4, 
                                north_angle = 0, 
                                wt_size = 'moderate') #moderate, large, custom 
     
