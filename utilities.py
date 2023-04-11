@@ -50,6 +50,10 @@ class PedestrianWindComfort():
         self.geometry_id   = ""
         self.geometry_path = ""
         
+        #Geometry Mapping 
+        self.single_entity     = {} 
+        self.multiple_entities = {}
+                
         #Region Of Interest Variables
         self.region_of_interest = None
         self.roi_radius = 300
@@ -279,6 +283,45 @@ class PedestrianWindComfort():
             geometry_path.append(shutil.make_archive(output_filename, 'zip', path)) 
 
         return geometry_path
+    
+    
+    def get_single_entity_name(self, project_id, geometry_id, key ,**kwargs):
+        #Get geometry mappings (make sure the exception of those works properly)
+
+        entity = self.geometry_api.get_geometry_mappings(project_id, geometry_id, **kwargs)._embedded
+        if len(entity) == 1:
+            # print(entity[0].name)
+            self.single_entity[key] = entity[0].name
+            return self.single_entity[key]
+        else:
+            raise Exception(f"Found {len(self.single_entity[key])} entities instead of 1: {self.single_entity[key]}")
+
+
+    def get_geometry_mapping(self, project_id, geometry_id, entities_list , layer_key, layer_number, **kwargs):
+        #Get geometry mappings (make sure the exception of those works properly)
+        
+        # Get geometry mappings
+        geometry_mappings = self.geometry_api.get_geometry_mappings(
+            project_id, geometry_id, _class="face", entities= entities_list)
+    
+        entities = [mapping.name for mapping in geometry_mappings._embedded]
+        print(f"entities: {entities}")
+        
+        self.single_entity[layer_key] = entities[layer_number]
+
+
+
+    def get_entity_names(self, project_id, geometry_id, key, number = None ,**kwargs):
+        
+        entities = self.geometry_api.get_geometry_mappings(project_id, geometry_id, **kwargs)._embedded
+    
+        if number is None or len(entities) == number:
+            # print(len(entities))
+            self.multiple_entities[key] = entities[0].name
+            return [self.multiple_entities[key] for e in entities]
+        else:
+            raise Exception(f"Found {len(self.multiple_entities[key])} entities instead of {number}: {self.multiple_entities[key]}")
+    
     
     def upload_geometry(self, name, path=None, units="m", _format="STL", facet_split=False):
         '''
@@ -743,16 +786,12 @@ class PedestrianWindComfort():
         self.height_above_ground = sim_sdk.DimensionalLength(height, "m")
         
     
-    def set_pedestrian_comfort_ground(self, ground_type): 
+    def set_pedestrian_comfort_ground_absolute(self): 
         
         '''
         Define the type of the pedestrian comfort map. Choice of: 
             [absolute, relative]
-            
-        note: 
-            The logic for the relative comfort map is not implemented yet. 
-            Currently, only absolute comfort maps are supported
-                
+               
         Parameters
         ----------
         ground_type: str 
@@ -763,16 +802,22 @@ class PedestrianWindComfort():
         None.  
         
         '''
+
+        self.comfort_ground_type = sim_sdk.GroundAbsolute(type = 'GROUND_ABSOLUTE')
+
         
-        if ground_type == "absolute":
+    def set_pedestrian_comfort_ground_relative(self, layers_key):
         
-            self.comfort_ground_type = sim_sdk.GroundAbsolute()
+        layers_to_assign = []
+        for key in layers_key: 
+            layers_to_assign.append(self.single_entity[key])
         
-        else: 
-            #Add code that allows the user to select a face and use that as 
-            # a comfort surface
-            pass
+        print(layers_to_assign)
         
+        self.comfort_ground_type = sim_sdk.GroundRelative(type = 'GROUND_RELATIVE' ,
+                                      topological_reference= sim_sdk.TopologicalReference(entities = layers_to_assign)) 
+        
+
     
     def set_pedestrian_comfort_map(self):
         
@@ -795,7 +840,7 @@ class PedestrianWindComfort():
             ground=self.comfort_ground_type)]
             
             
-    def add_more_comfort_maps(self,name,height,ground):
+    def add_more_comfort_maps(self,name,height,ground, layers_key = []):
         
         '''
         Allows the user to add more comfort maps depending on the height above 
@@ -812,12 +857,25 @@ class PedestrianWindComfort():
         ground_type: str 
             type of the pedestrian comfort map 
     
+        layers_key = list 
+            list containing the keys associated with the layers to be used for assignment
         Returns 
         -------
         None.  
         
         '''
         
+        if ground == "absolute":
+            self.set_pedestrian_comfort_ground_absolute()
+        
+        else: 
+            if len(layers_key) == 0 :
+                
+                raise  Exception("Make sure to pass a list containing the layer keys")
+                
+            else:     
+                self.set_pedestrian_comfort_ground_relative(layers_key)
+               
         self.pedestrian_comfort_map.append(   
             sim_sdk.PedestrianComfortSurface(
             name= name,
@@ -1074,8 +1132,8 @@ class PedestrianWindComfort():
             print("GPUh consumption: {i} - {k}".format(i = estimation.compute_resource.interval_min,
                                                       k = estimation.compute_resource.interval_max ))
             print("-"*10)
-            print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min,
-                                                      k = estimation.duration.interval_max ))
+            print("Simulation Time: {i} - {k}".format(i = estimation.duration.interval_min.replace('PT',''),
+                                                      k = estimation.duration.interval_max.replace('PT','') ))
             print("*"*10)
             
             if estimation.compute_resource is not None and estimation.compute_resource.value > 10.0:
