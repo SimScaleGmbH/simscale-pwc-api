@@ -15,29 +15,25 @@ pwc = util.PedestrianWindComfort()
 pwc.set_api_connection()
 
 """Create Project"""
-pwc.create_project("pwc_test1234", "123")
+pwc.create_project("pwc_test_bristol", "123")
 
 """Upload Geometry"""
 #Provide the name of the files to upload, if it is a directory simply give the name,
 #if it is a file then add the file extension to the name ex: example.stl
 
-name_of_files_to_upload = ["AccucitiesBristol"] #AccucitiesBristol Shapes
-# name_of_files_to_upload = ["Boston_Design2_with_terrain", "Design_1_Boston", "Design_2_Boston"]
+name_of_files_to_upload = ["AccucitiesBristol"] #AccucitiesBristol
 
 base_path = pathlib.Path().cwd() / "Geometries" 
 geometry_path = pwc.zip_cad_for_upload(name_of_files_to_upload,base_path)
 
 #Keys are just a name that is a reference. Values are the layer names that are predefined in the CAD tool
-# layers  = ["Terrain",  "TerrainPatches",
-#            "Roads", "ManMadeSurfaces",
-#            "Buildings", "ExtendedTerrain"]
-
 layers  = {"terrain" : "Terrain", "terrain_patches" : "TerrainPatches",
             "roads" : "Roads", "Man_made_surfaces" : "ManMadeSurfaces",
             "buidlings" : "Buildings", "extended_terrain" : "ExtendedTerrain"}  
 
 
 entities = []
+num_WD = 8
 #Iterate over the CAD models and run the simulations of each design in parallel
 for i, cad in enumerate(name_of_files_to_upload): 
     #Upload the list of provided CAD models to the SimScale project
@@ -61,16 +57,16 @@ for i, cad in enumerate(name_of_files_to_upload):
     # pwc.set_custom_wt_size(height_ext = 200, side_ext = 200,
     #                        inflow_ext = 200, outflow_ext = 500)
     
-    pwc.set_region_of_interest(radius = 300, center = [0,0], ground_height = 14.4, 
+    pwc.set_region_of_interest(radius = 250, center = [0,0], ground_height = 5, 
                                 north_angle = 0, 
                                 wt_size = 'moderate') #moderate, large, custom 
     
     """STEP 2: The Wind Conditions"""
     #Define information that characterizes the incoming wind
     pwc.set_geographical_location(latitude = 42.3600825, longitude = -71.0588801)
-    pwc.set_num_wind_directions(8)
+    pwc.set_num_wind_directions(num_WD)
     pwc.set_wind_engineering_standard("EU") #["EU", "AS_NZS", "NEN8100", "LONDON"]
-    pwc.set_wind_exposure_category(["EC2"]* 8) #["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"]
+    pwc.set_wind_exposure_category(["EC2"]* num_WD) #["EC1", "EC2", "EC3", "EC4", "EC5", "EC6"]
     pwc.set_surface_roughness(surface_roughness= True)
     pwc.set_wind_data_source("METEOBLUE") #METEOBLUE, USER_UPLOAD
     pwc.set_wind_rose()
@@ -98,24 +94,8 @@ for i, cad in enumerate(name_of_files_to_upload):
     pwc.set_mesh_settings()
     
     """Start Simulation"""
-    pwc.set_simulation_spec(simulation_name= "Design{}".format(i))
+    pwc.set_simulation_spec(simulation_name= "Pedestrian Wind Comfort 1")
     pwc.create_simulation()
     pwc.check_simulation_setup()
     pwc.estimate_simulation()
-    pwc.start_simulation_run(run_name = "Design{}_8WD".format(i))
-    
-    
-    
-    
-    
-# layers  = {"terrain" : "Terrain", "terrain_patches" : "TerrainPatches",
-#            "roads" : "Roads", "Man_made_surfaces" : "ManMadeSurfaces",
-#            "buidlings" : "Buildings", "extended_terrain" : "ExtendedTerrain"}  
-
-        # geometry_mappings = pwc.geometry_api.get_geometry_mappings(
-        #     pwc.project_id, pwc.geometry_id, _class="face", entities=['ExtendedTerrain']
-        # )
-        # entities = [mapping.name for mapping in geometry_mappings._embedded]
-        # print(f"entities: {entities}")
-        
-    
+    pwc.start_simulation_run(run_name = "{}WD".format(num_WD))
