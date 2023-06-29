@@ -15,4 +15,4 @@ This code should serve the purpose of showing: (All the functions can be found i
 8. How to check for the computing resources of a mesh and a simulation
 9. Run the simulation
 
-To use the code, you need to have a SimScale API key - you can receive one after contacting the SimScale team.
+To use the code, you need to have a SimScale API key.
